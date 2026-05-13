@@ -1,0 +1,13 @@
+secureRag_Environment/
+chroma_db/
+__pycache__/
+*.pyc
+.vscode/
+.claude/
+*.log
+
+# Never commit real API keys
+.env
+
+# Runtime-generated database — recreated at startup
+audit.db

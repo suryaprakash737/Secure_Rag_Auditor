@@ -1,16 +1,47 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends
 import uuid
 from app.schemas import LogIngest, QueryRequest, AuditResponse
-from app.database import add_log_to_db, secure_retrieval
+from app.database import add_log_to_db, secure_retrieval, collection
 from app.rag import generate_security_summary
 from app.auditor import check_query
 from app.ledger import log_search
 from app.auth import get_clearance
 
-app = FastAPI(title="Secure RAG Auditor")
+SEED_LOGS = [
+    {
+        "content": "Failed SSH login attempt from IP 192.168.1.105 on server prod-db-01. 47 attempts in 2 minutes.",
+        "source_device": "prod-db-01",
+        "security_level": 2
+    },
+    {
+        "content": "Unauthorized access attempt to classified document store. User ID 3342 clearance level mismatch.",
+        "source_device": "file-server-02",
+        "security_level": 4
+    },
+    {
+        "content": "Malware signature detected on endpoint DESKTOP-447. Process name: svchost_fake.exe attempting outbound connection.",
+        "source_device": "DESKTOP-447",
+        "security_level": 3
+    },
+]
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    if collection.count() == 0:
+        for log in SEED_LOGS:
+            log_id = str(uuid.uuid4())
+            metadata = {
+                "source_device": log["source_device"],
+                "security_level": log["security_level"],
+            }
+            add_log_to_db(log_id, log["content"], metadata)
+    yield
+
+app = FastAPI(title="Secure RAG Auditor", lifespan=lifespan)
 
 @app.get("/")
 def home():
@@ -30,7 +61,7 @@ def ingest_log(log: LogIngest):
 @app.post("/search", response_model=AuditResponse)
 async def search_logs(
     request: QueryRequest,
-    user_clearance: int = Depends(get_clearance)  # clearance from API key, not user input
+    user_clearance: int = Depends(get_clearance)
 ):
     is_malicious, reason = check_query(request.query)
     if is_malicious:

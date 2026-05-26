@@ -10,7 +10,7 @@ class LogIngest(BaseModel):
 
 class QueryRequest(BaseModel):
     query: str
-    user_clearance: int
+    
 
 
 class AuditResponse(BaseModel):

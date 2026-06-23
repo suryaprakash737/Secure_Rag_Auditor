@@ -228,6 +228,7 @@ def home():
               LangGraph incident workflow orchestration, and PostgreSQL auditability.
             </p>
             <div class="actions">
+              <a class="button" href="/demo">Try Interactive Demo</a>
               <a class="button" href="/docs">View API Docs</a>
               <a class="button secondary" href="https://github.com/suryaprakash737/Secure_Rag_Auditor">GitHub Repo</a>
             </div>

@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+  <title id="title">Secure RAG Auditor Architecture</title>
+  <desc id="desc">User requests pass through JWT authentication, prompt injection defense, ChromaDB retrieval, threat intelligence, LangGraph, Groq LLM, and PostgreSQL audit logging.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f6f8fb; }
+      .card { fill: #ffffff; stroke: #d9e1ec; stroke-width: 2; }
+      .accent { fill: #116466; }
+      .text { fill: #172033; font: 700 22px Arial, sans-serif; }
+      .small { fill: #5d6b82; font: 400 15px Arial, sans-serif; }
+      .arrow { stroke: #116466; stroke-width: 4; marker-end: url(#arrowhead); fill: none; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#116466"/>
+    </marker>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1280" height="520" rx="0"/>
+  <text class="text" x="58" y="58">Secure RAG Auditor Architecture</text>
+  <text class="small" x="58" y="84">Authenticated, clearance-aware RAG analysis with deterministic security controls and auditability.</text>
+
+  <g transform="translate(58,130)">
+    <rect class="card" width="180" height="96" rx="8"/>
+    <circle class="accent" cx="28" cy="32" r="10"/>
+    <text class="text" x="48" y="39">User</text>
+    <text class="small" x="20" y="68">Analyst or admin</text>
+  </g>
+  <path class="arrow" d="M242 178 H302"/>
+
+  <g transform="translate(310,130)">
+    <rect class="card" width="180" height="96" rx="8"/>
+    <circle class="accent" cx="28" cy="32" r="10"/>
+    <text class="text" x="48" y="39">JWT Auth</text>
+    <text class="small" x="20" y="68">Identity verified</text>
+  </g>
+  <path class="arrow" d="M494 178 H554"/>
+
+  <g transform="translate(562,130)">
+    <rect class="card" width="210" height="96" rx="8"/>
+    <circle class="accent" cx="28" cy="32" r="10"/>
+    <text class="text" x="48" y="39">Injection Defense</text>
+    <text class="small" x="20" y="68">Blocks unsafe prompts</text>
+  </g>
+  <path class="arrow" d="M776 178 H836"/>
+
+  <g transform="translate(844,130)">
+    <rect class="card" width="180" height="96" rx="8"/>
+    <circle class="accent" cx="28" cy="32" r="10"/>
+    <text class="text" x="48" y="39">ChromaDB</text>
+    <text class="small" x="20" y="68">Vector retrieval</text>
+  </g>
+  <path class="arrow" d="M934 230 V282"/>
+
+  <g transform="translate(844,294)">
+    <rect class="card" width="180" height="96" rx="8"/>
+    <circle class="accent" cx="28" cy="32" r="10"/>
+    <text class="text" x="48" y="39">Threat Intel</text>
+    <text class="small" x="20" y="68">Indicator enrichment</text>
+  </g>
+  <path class="arrow" d="M840 342 H780"/>
+
+  <g transform="translate(562,294)">
+    <rect class="card" width="210" height="96" rx="8"/>
+    <circle class="accent" cx="28" cy="32" r="10"/>
+    <text class="text" x="48" y="39">LangGraph</text>
+    <text class="small" x="20" y="68">Incident workflow</text>
+  </g>
+  <path class="arrow" d="M558 342 H498"/>
+
+  <g transform="translate(310,294)">
+    <rect class="card" width="180" height="96" rx="8"/>
+    <circle class="accent" cx="28" cy="32" r="10"/>
+    <text class="text" x="48" y="39">Groq LLM</text>
+    <text class="small" x="20" y="68">Structured analysis</text>
+  </g>
+  <path class="arrow" d="M306 342 H246"/>
+
+  <g transform="translate(58,294)">
+    <rect class="card" width="180" height="96" rx="8"/>
+    <circle class="accent" cx="28" cy="32" r="10"/>
+    <text class="text" x="48" y="39">PostgreSQL</text>
+    <text class="small" x="20" y="68">Audit logs</text>
+  </g>
+</svg>

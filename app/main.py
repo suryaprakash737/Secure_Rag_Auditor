@@ -7,6 +7,7 @@ import uuid
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.requests import Request
 
 from app.api.routes.admin import router as admin_router
@@ -53,6 +54,7 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="Secure RAG Auditor", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.middleware("http")

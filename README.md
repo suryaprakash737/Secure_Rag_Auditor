@@ -1,318 +1,119 @@
 # Secure RAG Auditor
 
-An AI-powered security log analysis platform designed to securely analyze security events using Retrieval-Augmented Generation (RAG), prompt injection defense, role-based access control, threat intelligence enrichment, and audit logging.
+Secure RAG Auditor is an AI-powered security log analysis platform built with FastAPI, PostgreSQL, ChromaDB, LangGraph, Docker, and Groq Llama 3.1.
 
-Secure RAG Auditor demonstrates how modern AI systems can be deployed in security-sensitive environments while enforcing authentication, authorization, prompt safety, and complete auditability.
+It demonstrates how to build a security-sensitive RAG system with authentication, RBAC, prompt injection defense, clearance-aware retrieval, threat intelligence enrichment, incident workflow orchestration, audit logging, CI validation, and containerized deployment.
 
----
+![CI](https://github.com/suryaprakash737/Secure_Rag_Auditor/actions/workflows/ci.yml/badge.svg)
+
+## Project Overview
+
+The platform lets authenticated users search security logs and receive structured incident summaries. The system blocks prompt injection attempts, retrieves logs according to server-side user clearance, enriches detected indicators with threat intelligence, and records every search in PostgreSQL for audit reporting.
+
+Admins can ingest logs and view dashboard-ready reporting APIs backed by PostgreSQL audit data.
 
 ## Features
 
-### AI-Powered Security Analysis
+- AI-powered security log analysis using Groq Llama 3.1.
+- ChromaDB-backed retrieval with security-level metadata filtering.
+- JWT authentication and role-based access control.
+- Prompt injection detection before retrieval or LLM analysis.
+- PostgreSQL audit logging with SQLModel.
+- Threat intelligence enrichment for IPs, domains, and file hashes.
+- LangGraph-style incident analysis workflow.
+- Admin reporting APIs and read-only dashboard.
+- Docker Compose runtime with PostgreSQL.
+- GitHub Actions CI with compile, test, Compose validation, and Docker build checks.
+- Pytest coverage for authentication, RBAC, prompt defense, threat intel, workflow, and admin routes.
 
-* Retrieves relevant security logs using ChromaDB vector search.
-* Generates structured security summaries using Groq LLM (Llama 3.1).
-* Produces actionable recommendations and risk assessments.
+## Security Controls
+
+### JWT Authentication
+
+Users register and log in to receive bearer tokens. Protected routes use token validation to retrieve the current user from PostgreSQL.
+
+### RBAC
+
+Roles are enforced with reusable FastAPI dependencies.
+
+- `analyst`: can search security logs.
+- `admin`: can ingest logs and access admin reporting.
+
+### Clearance-Aware Retrieval
+
+The `/search` route ignores client-provided clearance values and uses `current_user.clearance_level` from PostgreSQL.
 
 ### Prompt Injection Defense
 
-Detects and blocks malicious prompts before they reach the LLM.
-
-Supported attack categories:
-
-* Instruction Override
-* Persona Hijacking
-* Prompt Extraction
-* Jailbreak Attempts
-
-### Authentication & Authorization
-
-* JWT Authentication
-* Role-Based Access Control (RBAC)
-* Server-side clearance enforcement
-* Protected administrative endpoints
-
-### Threat Intelligence Enrichment
-
-* IP reputation enrichment
-* Domain reputation enrichment
-* File hash enrichment
-* Security context added before LLM analysis
-
-### LangGraph Incident Workflow
-
-Multi-step incident analysis pipeline:
-
-* Query Validation
-* Security Log Retrieval
-* Threat Intelligence Enrichment
-* AI Analysis
-* Response Validation
+The system blocks known prompt injection patterns such as instruction override, persona hijacking, prompt extraction, and jailbreak attempts.
 
 ### Audit Logging
 
-Every query is recorded in PostgreSQL with:
+Search activity is written to PostgreSQL with timestamp, query, user clearance, risk level, log count, and blocked status.
 
-* Timestamp
-* User Clearance
-* Risk Level
-* Log Count
-* Blocked Status
+## Architecture Diagram
 
-### DevOps & Reliability
-
-* Docker Compose
-* PostgreSQL
-* GitHub Actions CI
-* Structured Logging
-* Global Error Handling
-* Automated Tests
-
----
-
-# Architecture
+![Secure RAG Auditor Architecture](static/architecture.svg)
 
 ```text
-                        +-------------------+
-                        |      User         |
-                        +---------+---------+
-                                  |
-                                  v
-                     +-----------------------+
-                     | JWT Authentication    |
-                     +-----------+-----------+
-                                 |
-                                 v
-                     +-----------------------+
-                     | RBAC Authorization    |
-                     +-----------+-----------+
-                                 |
-                                 v
-                     +-----------------------+
-                     | Prompt Injection      |
-                     | Detection             |
-                     +-----------+-----------+
-                                 |
-                                 v
-                     +-----------------------+
-                     | ChromaDB Retrieval    |
-                     +-----------+-----------+
-                                 |
-                                 v
-                     +-----------------------+
-                     | Threat Intelligence   |
-                     | Enrichment            |
-                     +-----------+-----------+
-                                 |
-                                 v
-                     +-----------------------+
-                     | LangGraph Workflow    |
-                     +-----------+-----------+
-                                 |
-                                 v
-                     +-----------------------+
-                     | Groq LLM Analysis     |
-                     +-----------+-----------+
-                                 |
-                                 v
-                     +-----------------------+
-                     | PostgreSQL Audit Log  |
-                     +-----------------------+
+User Query
+  -> JWT Authentication
+  -> Prompt Injection Defense
+  -> Clearance-Aware Retrieval
+  -> Threat Intelligence Enrichment
+  -> LangGraph Incident Workflow
+  -> Groq LLM Analysis
+  -> PostgreSQL Audit Logging
 ```
 
----
+## Screenshots
 
-# Security Features
+Use these pages after starting the app:
 
-## Prompt Injection Protection
+- Landing page: `http://localhost:8000/`
+- API docs: `http://localhost:8000/docs`
+- Admin dashboard: `http://localhost:8000/admin/dashboard`
+- Architecture asset: `http://localhost:8000/static/architecture.svg`
 
-The system blocks known prompt injection patterns before they reach the LLM.
+## API Endpoints
 
-Examples:
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/` | Professional landing page |
+| `GET` | `/health` | Health check |
+| `POST` | `/register` | Register a user |
+| `POST` | `/login` | Issue JWT bearer token |
+| `POST` | `/search` | Authenticated security log analysis |
+| `POST` | `/ingest` | Admin-only log ingestion |
+| `GET` | `/admin/stats` | Admin-only audit metrics |
+| `GET` | `/admin/recent-audits` | Admin-only recent audit records |
+| `GET` | `/admin/dashboard` | Admin-only read-only dashboard |
 
-* "Ignore previous instructions"
-* "Reveal your system prompt"
-* "Enable developer mode"
-* "Act as a different assistant"
+## Authentication Flow
 
-Blocked requests are recorded in the audit log.
+1. Register with `/register`.
+2. Log in with `/login`.
+3. Copy the returned `access_token`.
+4. Use `Authorization: Bearer <token>` for protected endpoints.
+5. The API decodes the JWT, reads the `sub` claim, loads the user from PostgreSQL, and verifies the user is active.
 
----
+## RBAC Flow
 
-## Role-Based Access Control
+1. Protected routes call `get_current_user()`.
+2. Admin-only routes call `require_role(["admin"])`.
+3. If the user role is not allowed, the API returns `403 Insufficient permissions`.
+4. `/search` remains available to authenticated users and derives clearance from the database user record.
 
-### Analyst
+## Docker Setup
 
-* Search security logs
-* View AI-generated analysis
-
-### Admin
-
-* Ingest security logs
-* Access audit reporting APIs
-* View system-wide statistics
-
----
-
-## Clearance Enforcement
-
-Users can only retrieve logs that match their authorized clearance level.
-
-Clearance is derived from authenticated user records stored in PostgreSQL.
-
-Client-provided clearance values are ignored.
-
----
-
-# Threat Intelligence Enrichment
-
-Before AI analysis, the platform identifies indicators such as:
-
-* IP Addresses
-* Domains
-* File Hashes
-
-Indicators are enriched using local threat intelligence data and passed into the analysis workflow.
-
-Example:
-
-```json
-{
-  "indicator": "192.168.1.105",
-  "reputation": "malicious",
-  "threat_type": "brute_force"
-}
-```
-
----
-
-# LangGraph Incident Workflow
-
-Secure RAG Auditor includes a multi-step incident response workflow.
-
-Workflow stages:
-
-```text
-Validate Query
-      ↓
-Retrieve Logs
-      ↓
-Threat Intelligence Enrichment
-      ↓
-Generate Security Summary
-      ↓
-Validate Response
-```
-
-This design separates incident analysis into deterministic security stages rather than relying solely on a single LLM call.
-
----
-
-# Tech Stack
-
-## Backend
-
-* FastAPI
-* Python
-
-## AI & Retrieval
-
-* Groq LLM (Llama 3.1)
-* ChromaDB
-* LangGraph
-
-## Database
-
-* PostgreSQL
-* SQLModel
-
-## Security
-
-* JWT Authentication
-* RBAC
-* Prompt Injection Detection
-
-## DevOps
-
-* Docker Compose
-* GitHub Actions
-
-## Testing
-
-* Pytest
-
----
-
-# API Endpoints
-
-| Method | Endpoint               | Description                        |
-| ------ | ---------------------- | ---------------------------------- |
-| POST   | `/register`            | Register a new user                |
-| POST   | `/login`               | Authenticate and obtain JWT        |
-| POST   | `/ingest`              | Ingest security logs (Admin Only)  |
-| POST   | `/search`              | Analyze security logs              |
-| GET    | `/admin/stats`         | Audit statistics (Admin Only)      |
-| GET    | `/admin/recent-audits` | Recent audit activity (Admin Only) |
-
----
-
-# Local Development
-
-## Clone Repository
+Set environment variables:
 
 ```bash
-git clone https://github.com/suryaprakash737/Secure_Rag_Auditor.git
-
-cd Secure_Rag_Auditor
+export GROQ_API_KEY=your_groq_api_key
+export SECRET_KEY=change_this_secret
 ```
 
-## Create Virtual Environment
-
-### Windows
-
-```powershell
-python -m venv secureRag_Environment
-
-.\secureRag_Environment\Scripts\Activate.ps1
-```
-
-### Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-# Environment Variables
-
-```env
-GROQ_API_KEY=your_groq_api_key
-
-SECRET_KEY=your_secret_key
-
-DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/secure_rag_auditor
-```
-
----
-
-# Run Locally
-
-```bash
-uvicorn app.main:app --reload
-```
-
-Open:
-
-```text
-http://localhost:8000/docs
-```
-
----
-
-# Docker Deployment
-
-Build and start the complete stack:
+Start the stack:
 
 ```bash
 docker compose up --build
@@ -320,164 +121,130 @@ docker compose up --build
 
 Services:
 
-* FastAPI
-* PostgreSQL
-* ChromaDB Persistence
+- FastAPI app on `http://localhost:8000`
+- PostgreSQL 16
+- ChromaDB persistence mounted at `./chroma_db:/app/chroma_db`
 
-Open:
+## Local Development
 
-```text
-http://localhost:8000/docs
+```bash
+python -m venv secureRag_Environment
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
----
+Required environment variables:
 
-# Testing
+```env
+GROQ_API_KEY=your_groq_api_key
+SECRET_KEY=change_this_secret
+DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/secure_rag_auditor
+```
 
-Run all tests:
+## CI/CD Pipeline
+
+GitHub Actions runs on push and pull request:
+
+- Checkout repository.
+- Set up Python 3.11.
+- Install dependencies.
+- Compile the app with `python -m compileall app`.
+- Run import smoke test.
+- Run `pytest -q`.
+- Validate Docker Compose.
+- Build the Docker image.
+
+## Testing
+
+Run:
 
 ```bash
 pytest -q
 ```
 
-Current Coverage:
+Current test coverage includes:
+
+- Prompt injection detection.
+- JWT creation and decoding.
+- Password hashing and verification.
+- RBAC role checks.
+- Threat intelligence enrichment.
+- LangGraph incident workflow.
+- Admin route callability and access-control behavior.
+
+## Deployment
+
+The project is container-ready through Docker Compose. For hosted deployment, provide:
+
+- `DATABASE_URL`
+- `SECRET_KEY`
+- `GROQ_API_KEY`
+- Persistent storage for ChromaDB
+- PostgreSQL-compatible database
+
+## Engineering Achievements
+
+- Migrated audit logging from SQLite to PostgreSQL using SQLModel.
+- Implemented JWT authentication and RBAC.
+- Containerized the platform with Docker Compose.
+- Added GitHub Actions CI validation.
+- Built a prompt injection detection engine.
+- Added a LangGraph-based incident analysis workflow.
+- Integrated a deterministic threat-intelligence enrichment pipeline.
+- Added structured logging and global error handling.
+- Added dashboard-ready admin reporting APIs.
+
+## Interview Talking Points
+
+### Why PostgreSQL replaced SQLite
+
+SQLite was useful for early prototyping, but PostgreSQL is a better fit for production audit logging because it supports concurrent access, managed deployment, stronger operational tooling, and scalable reporting.
+
+### Why JWT was added
+
+JWT authentication gives the API a portable identity layer. It allows protected endpoints to consistently resolve the current user and enforce server-side access decisions.
+
+### Why RBAC was added
+
+Security platforms need separation of duties. Analysts can search logs, while admins can ingest logs and review audit telemetry.
+
+### Why Docker Compose was added
+
+Docker Compose makes the app reproducible by running FastAPI and PostgreSQL together with consistent environment configuration.
+
+### Why GitHub Actions was added
+
+CI validates the codebase automatically through dependency installation, compilation, tests, Docker Compose validation, and Docker image build checks.
+
+### Why LangGraph was added
+
+Security investigations are multi-step workflows. LangGraph provides a structured way to model validation, retrieval, enrichment, analysis, and response validation as separate stages.
+
+### Why Threat Intelligence Enrichment was added
+
+Raw log retrieval is not enough for security analysis. Enrichment adds indicator reputation and threat classification before the LLM produces a summary.
+
+## Future Improvements
+
+- External threat intelligence integrations.
+- SIEM export support.
+- More detailed SOC dashboard views.
+- Alembic migrations.
+- OpenTelemetry tracing.
+- Cloud deployment manifests.
+- Multi-tenant organization support.
+- Human approval workflows for incident response.
+
+## Live Demo
+
+Base URL:
 
 ```text
-23 tests passing
-```
-
-Test categories:
-
-* Prompt Injection Detection
-* JWT Authentication
-* RBAC Authorization
-* Threat Intelligence
-* LangGraph Workflow
-* Admin Reporting
-
----
-
-# CI/CD
-
-GitHub Actions automatically:
-
-* Installs dependencies
-* Compiles application code
-* Runs automated tests
-* Validates Docker configuration
-* Builds Docker image
-
-Workflow:
-
-```text
-Push / Pull Request
-          ↓
-GitHub Actions
-          ↓
-Compile
-          ↓
-Test
-          ↓
-Docker Validation
-          ↓
-Build
-```
-
----
-
-# Screenshots
-
-## Swagger UI
-
-```text
-docs/images/swagger-ui.png
-```
-
-## Admin Reporting
-
-```text
-docs/images/admin-stats.png
-```
-
-## GitHub Actions
-
-```text
-docs/images/github-actions.png
-```
-
-## Docker Deployment
-
-```text
-docs/images/docker-compose.png
-```
-
----
-
-# Interview Talking Points
-
-### Why PostgreSQL?
-
-SQLite was suitable for prototyping but lacked production-grade concurrency and scalability.
-
-PostgreSQL provides:
-
-* Better reliability
-* Concurrent access
-* Production-ready audit storage
-
-### Why JWT Authentication?
-
-Prevents anonymous access and enables user identity propagation across the system.
-
-### Why RBAC?
-
-Different users require different permissions.
-
-Analysts should not ingest data or access audit telemetry.
-
-### Why Threat Intelligence Enrichment?
-
-Raw log retrieval alone lacks security context.
-
-Enrichment adds reputation and threat classification before analysis.
-
-### Why LangGraph?
-
-Security investigations are multi-step workflows.
-
-LangGraph enables deterministic orchestration rather than a single LLM call.
-
-### Why Docker Compose?
-
-Provides reproducible deployments and consistent local development environments.
-
----
-
-# Future Improvements
-
-* Real-time threat intelligence integrations
-* SIEM integrations
-* SOC dashboard UI
-* Multi-tenant support
-* Kubernetes deployment
-* OpenTelemetry observability
-* Automated incident response workflows
-
----
-
-# Live Demo
-
 https://secure-rag-auditor.onrender.com
+```
 
-Swagger Documentation:
+Swagger docs:
 
+```text
 https://secure-rag-auditor.onrender.com/docs
-
----
-
-# Author
-
-**Suryaprakash Uppalapati**
-
-M.S. Computer Science
-George Mason University
+```

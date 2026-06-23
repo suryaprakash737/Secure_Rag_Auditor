@@ -2,14 +2,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends
+import time
 import uuid
-from app.schemas import LogIngest, QueryRequest, AuditResponse
-from app.database import add_log_to_db, secure_retrieval, collection
-from app.rag import generate_security_summary
-from app.auditor import check_query
-from app.ledger import log_search
-from app.auth import get_clearance
+
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
+from starlette.requests import Request
+
+from app.api.routes.admin import router as admin_router
+from app.api.routes.auth import router as auth_router
+from app.api.routes.health import router as health_router
+from app.api.routes.logs import router as logs_router
+from app.api.routes.search import router as search_router
+from app.core.logging import configure_logging, get_logger
+from app.db.chroma import add_log_to_db, collection
+from app.db.init_db import init_db
+
+configure_logging()
+logger = get_logger(__name__)
 
 SEED_LOGS = [
     {
@@ -31,6 +41,7 @@ SEED_LOGS = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    init_db()
     if collection.count() == 0:
         for log in SEED_LOGS:
             log_id = str(uuid.uuid4())
@@ -43,54 +54,33 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Secure RAG Auditor", lifespan=lifespan)
 
-@app.get("/")
-def home():
-    return {"status": "The Secure Vault is Online"}
 
-@app.post("/ingest")
-def ingest_log(log: LogIngest):
-    """Stores a log entry in ChromaDB with security-level metadata."""
-    log_id = str(uuid.uuid4())
-    metadata = {
-        "source_device": log.source_device,
-        "security_level": log.security_level,
-    }
-    add_log_to_db(log_id, log.content, metadata)
-    return {"message": "Log Secured", "id": log_id}
-
-@app.post("/search", response_model=AuditResponse)
-async def search_logs(
-    request: QueryRequest,
-    user_clearance: int = Depends(get_clearance)
-):
-    is_malicious, reason = check_query(request.query)
-    if is_malicious:
-        log_search(request.query, user_clearance, "Blocked", 0, True)
-        raise HTTPException(status_code=400, detail=f"Query blocked: {reason}")
-
-    raw_results = secure_retrieval(request.query, user_clearance)
-    if not raw_results["documents"] or not raw_results["documents"][0]:
-        log_search(request.query, user_clearance, "Safe", 0, False)
-        return AuditResponse(
-            answer="No logs found within your clearance level for this query.",
-            key_findings=[],
-            recommendation="Verify your clearance level or refine your query.",
-            sources=[],
-            risk_level="Safe",
-            log_count=0,
-        )
-
-    docs = raw_results["documents"][0]
-    meta = raw_results["metadatas"][0]
-    llm_result = await generate_security_summary(request.query, docs, meta)
-    risk_level = llm_result.get("risk_level", "Unknown")
-    log_search(request.query, user_clearance, risk_level, len(docs), False)
-
-    return AuditResponse(
-        answer=llm_result.get("summary", "Analysis unavailable."),
-        key_findings=llm_result.get("key_findings", []),
-        recommendation=llm_result.get("recommendation", "No recommendation available."),
-        sources=meta,
-        risk_level=risk_level,
-        log_count=len(docs),
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - start_time) * 1000
+    logger.info(
+        "%s %s %s %.2fms",
+        request.method,
+        request.url.path,
+        response.status_code,
+        duration_ms,
     )
+    return response
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled exception for %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
+app.include_router(auth_router)
+app.include_router(admin_router)
+app.include_router(health_router)
+app.include_router(logs_router)
+app.include_router(search_router)

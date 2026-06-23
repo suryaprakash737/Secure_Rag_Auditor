@@ -83,3 +83,11 @@ uvicorn app.main:app --reload
 ```
 GROQ_API_KEY=your-groq-api-key-here
 ```
+
+## Docker
+
+```bash
+docker compose up --build
+```
+
+The API will be available at http://localhost:8000. Set `GROQ_API_KEY` and optionally `SECRET_KEY` in your environment before starting Compose.

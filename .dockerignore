@@ -1,0 +1,5 @@
+secureRag_Environment/
+__pycache__/
+.git/
+audit.db
+chroma_db/

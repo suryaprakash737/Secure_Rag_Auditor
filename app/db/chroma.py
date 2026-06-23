@@ -1,6 +1,6 @@
 import chromadb
 import os
-from .schemas import QueryRequest, AuditResponse, LogIngest
+from app.schemas.requests import QueryRequest, AuditResponse, LogIngest
 
 # 1. SETUP THE PATH
 # This tells Python where to find the 'chroma_db' folder relative to this file.

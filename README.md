@@ -246,5 +246,5 @@ https://secure-rag-auditor-1.onrender.com
 Swagger docs:
 
 ```text
-https://secure-rag-auditor.onrender.com/docs
+https://secure-rag-auditor-1.onrender.com/docs
 ```

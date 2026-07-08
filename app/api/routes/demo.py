@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 
+from app.core.config import settings
 from app.workflows.incident_workflow import analyze_incident
 
 router = APIRouter()
@@ -13,8 +14,14 @@ class DemoAnalyzeRequest(BaseModel):
     query: str
 
 
+def _ensure_demo_enabled() -> None:
+    if not settings.ENABLE_DEMO:
+        raise HTTPException(status_code=404, detail="Demo is disabled")
+
+
 @router.get("/demo", response_class=HTMLResponse)
 def demo_page():
+    _ensure_demo_enabled()
     return """
     <!doctype html>
     <html lang="en">
@@ -84,6 +91,17 @@ def demo_page():
             margin: 18px 0 0;
             color: var(--muted);
             font-size: 18px;
+          }
+
+          .demo-note {
+            max-width: 760px;
+            margin: 16px 0 0;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(20, 34, 53, 0.82);
+            color: var(--accent-2);
+            font-weight: 700;
           }
 
           .demo-grid {
@@ -254,6 +272,7 @@ def demo_page():
           <header>
             <h1>Secure RAG Auditor Demo</h1>
             <p class="description">Interact with the AI-powered security analysis workflow using realistic security queries.</p>
+            <p class="demo-note">Demo-only read path. Production search remains JWT-protected and uses server-side user clearance.</p>
           </header>
 
           <section class="guide-grid" aria-label="Demo guidance">
@@ -388,4 +407,6 @@ def demo_page():
 
 @router.post("/demo/analyze")
 def analyze_demo(request: DemoAnalyzeRequest):
+    _ensure_demo_enabled()
+    # Demo-only read path: intentionally unauthenticated and limited to internal demo clearance.
     return analyze_incident(request.query, DEMO_CLEARANCE_LEVEL)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
 
 from app.core.security import create_access_token, get_password_hash, verify_password
@@ -33,13 +33,27 @@ def register_user(
     return {"message": "User registered successfully"}
 
 
+async def _parse_login_request(request: Request) -> LoginRequest:
+    content_type = request.headers.get("content-type", "")
+    if content_type.startswith("application/x-www-form-urlencoded") or content_type.startswith("multipart/form-data"):
+        form = await request.form()
+        return LoginRequest(
+            username=str(form.get("username", "")),
+            password=str(form.get("password", "")),
+        )
+
+    body = await request.json()
+    return LoginRequest(**body)
+
+
 @router.post("/login", response_model=TokenResponse)
-def login_user(
-    request: LoginRequest,
+async def login_user(
+    request: Request,
     session: Session = Depends(get_session),
 ):
-    user = session.exec(select(User).where(User.username == request.username)).first()
-    if not user or not verify_password(request.password, user.hashed_password):
+    credentials = await _parse_login_request(request)
+    user = session.exec(select(User).where(User.username == credentials.username)).first()
+    if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
     token = create_access_token({"sub": user.username})

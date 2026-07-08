@@ -12,6 +12,30 @@ from app.services.threat_intel_service import enrich_detected_ips
 router = APIRouter()
 
 
+def _is_authorized_metadata(metadata: dict, user_clearance: int) -> bool:
+    try:
+        return int(metadata.get("security_level")) <= user_clearance
+    except (TypeError, ValueError):
+        return False
+
+
+def _filter_authorized_results(
+    docs: list[str],
+    meta: list[dict],
+    user_clearance: int,
+) -> tuple[list[str], list[dict]]:
+    authorized_pairs = [
+        (doc, metadata)
+        for doc, metadata in zip(docs, meta)
+        if _is_authorized_metadata(metadata, user_clearance)
+    ]
+    if not authorized_pairs:
+        return [], []
+
+    authorized_docs, authorized_meta = zip(*authorized_pairs)
+    return list(authorized_docs), list(authorized_meta)
+
+
 @router.post("/search", response_model=AuditResponse)
 async def search_logs(
     request: QueryRequest,
@@ -39,6 +63,18 @@ async def search_logs(
 
     docs = raw_results["documents"][0]
     meta = raw_results["metadatas"][0]
+    docs, meta = _filter_authorized_results(docs, meta, user_clearance)
+    if not docs:
+        log_search(request.query, user_clearance, "Safe", 0, False)
+        return AuditResponse(
+            answer="No logs found within your clearance level for this query.",
+            key_findings=[],
+            recommendation="Verify your clearance level or refine your query.",
+            sources=[],
+            risk_level="Safe",
+            log_count=0,
+        )
+
     threat_intel_findings = enrich_detected_ips(docs, meta)
     llm_result = await generate_security_summary(
         request.query,

@@ -1,17 +1,22 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.rate_limit import demo_limiter
+from app.services.audit_service import log_search
 from app.workflows.incident_workflow import analyze_incident
 
 router = APIRouter()
 
-DEMO_CLEARANCE_LEVEL = 5
+# Anonymous visitors get analyst-level clearance, not admin: logs above this
+# level (e.g. the level-4 classified seed log) stay hidden, which also shows
+# the clearance filter working.
+DEMO_CLEARANCE_LEVEL = 3
 
 
 class DemoAnalyzeRequest(BaseModel):
-    query: str
+    query: str = Field(min_length=1, max_length=500)
 
 
 def _ensure_demo_enabled() -> None:
@@ -272,7 +277,7 @@ def demo_page():
           <header>
             <h1>Secure RAG Auditor Demo</h1>
             <p class="description">Interact with the AI-powered security analysis workflow using realistic security queries.</p>
-            <p class="demo-note">Demo-only read path. Production search remains JWT-protected and uses server-side user clearance.</p>
+            <p class="demo-note">Public demo runs at clearance level 3, so higher-classified logs stay hidden. Production search is JWT-protected and uses each user&#39;s server-side clearance.</p>
           </header>
 
           <section class="guide-grid" aria-label="Demo guidance">
@@ -391,7 +396,12 @@ def demo_page():
                 body: JSON.stringify({ query }),
               });
               const data = await response.json();
-              if (!response.ok) throw new Error(data.detail || "Analysis failed");
+              if (!response.ok) {
+                const detail = typeof data.detail === "string"
+                  ? data.detail
+                  : "Please enter a query of up to 500 characters.";
+                throw new Error(detail || "Analysis failed");
+              }
               renderResult(data);
             } catch (error) {
               results.innerHTML = `<p class='state'>${escapeHtml(error.message)}</p>`;
@@ -405,8 +415,17 @@ def demo_page():
     """
 
 
-@router.post("/demo/analyze")
+@router.post("/demo/analyze", dependencies=[Depends(demo_limiter.dependency)])
 def analyze_demo(request: DemoAnalyzeRequest):
     _ensure_demo_enabled()
-    # Demo-only read path: intentionally unauthenticated and limited to internal demo clearance.
-    return analyze_incident(request.query, DEMO_CLEARANCE_LEVEL)
+    # Demo-only read path: unauthenticated, rate limited, capped at DEMO_CLEARANCE_LEVEL,
+    # and audited like any other search.
+    result = analyze_incident(request.query, DEMO_CLEARANCE_LEVEL)
+    log_search(
+        request.query,
+        DEMO_CLEARANCE_LEVEL,
+        result.get("risk_level", "Unknown"),
+        result.get("log_count", 0),
+        bool(result.get("was_blocked")),
+    )
+    return result

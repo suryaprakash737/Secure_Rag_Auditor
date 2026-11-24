@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlmodel import Session, select
 
+from app.core.rate_limit import login_limiter
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.db.session import get_session
 from app.models.user import User
@@ -9,7 +10,7 @@ from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 router = APIRouter()
 
 
-@router.post("/register")
+@router.post("/register", dependencies=[Depends(login_limiter.dependency)])
 def register_user(
     request: RegisterRequest,
     session: Session = Depends(get_session),
@@ -46,7 +47,11 @@ async def _parse_login_request(request: Request) -> LoginRequest:
     return LoginRequest(**body)
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    dependencies=[Depends(login_limiter.dependency)],
+)
 async def login_user(
     request: Request,
     session: Session = Depends(get_session),

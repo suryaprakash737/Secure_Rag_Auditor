@@ -1,8 +1,21 @@
-import os
+import asyncio
 import json
+import os
+
 from groq import Groq
 
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
+
+# Groq retires models over time; override with GROQ_MODEL instead of editing code.
+DEFAULT_GROQ_MODEL = "openai/gpt-oss-20b"
+
 _client = None
+
+
+def _get_model() -> str:
+    return os.environ.get("GROQ_MODEL", "").strip() or DEFAULT_GROQ_MODEL
 
 def _get_client():
     global _client
@@ -65,24 +78,28 @@ async def generate_security_summary(query, docs, meta, threat_intel_findings=Non
         '{"summary": "...", "risk_level": "Critical|High|Medium|Low|Safe", '
         '"key_findings": ["..."], "recommendation": "..."}'
     )
+    model = _get_model()
+    request_kwargs = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": user_message},
+        ],
+        "temperature": 0.1,
+        "max_tokens": 1024,
+        "response_format": {"type": "json_object"},
+    }
+    if model.startswith("openai/gpt-oss"):
+        # Reasoning models: keep thinking short so the JSON answer fits the budget.
+        request_kwargs["extra_body"] = {"reasoning_effort": "low"}
+
     try:
-        response = _get_client().chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[
-                {
-                    "role": "system",
-                    "content": _SYSTEM_PROMPT
-                },
-                {
-                    "role": "user",
-                    "content": user_message
-                }
-            ],
-            temperature=0.1,
-            max_tokens=512
+        # The Groq client is synchronous; run it off the event loop.
+        response = await asyncio.to_thread(
+            _get_client().chat.completions.create, **request_kwargs
         )
 
-        text = response.choices[0].message.content.strip()
+        text = (response.choices[0].message.content or "").strip()
 
         if "```" in text:
             text = text.split("```")[1]
@@ -97,10 +114,12 @@ async def generate_security_summary(query, docs, meta, threat_intel_findings=Non
 
         return result
 
-    except Exception as exc:
+    except Exception:
+        # Full details go to server logs only; never echo provider errors to clients.
+        logger.exception("LLM summary failed (model=%s)", model)
         return {
-            "summary": f"LLM unavailable: {exc}",
+            "summary": "AI analysis is temporarily unavailable. Retrieved logs and threat intelligence are shown below.",
             "risk_level": "Unknown",
             "key_findings": [],
-            "recommendation": "Check GROQ_API_KEY and retry."
+            "recommendation": "Retry shortly. If this persists, check the server logs.",
         }

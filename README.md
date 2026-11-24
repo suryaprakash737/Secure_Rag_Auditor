@@ -240,11 +240,11 @@ Raw log retrieval is not enough for security analysis. Enrichment adds indicator
 Base URL:
 
 ```text
-https://secure-rag-auditor-1.onrender.com
+https://secure-rag-auditor.onrender.com
 ```
 
 Swagger docs:
 
 ```text
-https://secure-rag-auditor-1.onrender.com/docs
+https://secure-rag-auditor.onrender.com/docs
 ```

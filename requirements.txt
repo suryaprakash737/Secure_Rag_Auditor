@@ -1,17 +1,23 @@
+# Runtime dependencies, pinned to the versions the test suite runs against.
+# Python version is pinned in .python-version (read by Render and CI).
 fastapi==0.136.1
 uvicorn==0.46.0
-chromadb==1.5.8
-groq==0.9.0
-python-dotenv==1.2.2
 pydantic==2.13.3
+python-multipart==0.0.32
+python-dotenv==1.2.2
 httpx==0.27.0
-sqlmodel
-psycopg[binary]
-python-jose[cryptography]
 
-passlib[bcrypt]
+# Data stores
+chromadb==1.5.8
+sqlmodel==0.0.38
+SQLAlchemy==2.0.49
+psycopg[binary]==3.3.4
+
+# Auth
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 
-python-multipart
-pytest
-langgraph
+# LLM + workflow
+groq==0.9.0
+langgraph==1.2.6
